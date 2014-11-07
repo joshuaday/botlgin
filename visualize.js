@@ -100,7 +100,7 @@
 			-sin, cos, 0, camdistance
 		];
 
-		var flicker = .4 * Math.random() * Math.random();
+		var flicker = .2; // * Math.random() * Math.random();
 		var lights = [
 			//[0, -1, 0,  .1, .3, .1], // beneath
 			[0, 1, 0, .15, .15, .4], // above
