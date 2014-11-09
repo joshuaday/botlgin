@@ -1,6 +1,6 @@
 (function ($) {
 	var host, canvas, context;
-	var cellSize = 2, stepSize = 3, halfCell = (.5 * cellSize), map;
+	var cellSize = 1.2, stepSize = 3, halfCell = (.5 * cellSize), map;
 	var heldButton = 0, lastX = 0, lastY = 0;
 	function up(e) {
 		e.preventDefault();
@@ -80,19 +80,22 @@
 		requestAnimationFrame(animationFrame);
 	}
 
-	var oldTimestamp = 0, left = 0, direction = 1;
+	var oldTimestamp = 0, left = 0, direction = 1, cycle = 0;
 	function animationFrame(timestamp) {
 		requestAnimationFrame(animationFrame);
 
 		context.fillStyle = "#000000";
 		context.fillRect(0, 0, canvas.width, canvas.height);
 
-		var cos = Math.cos(left * Math.PI), sin = Math.sin(left * Math.PI), shiftdown = 60, camdistance = 130;
+		var screenx = canvas.width * .5, screeny = canvas.height * .5;
+		var cos = Math.cos(left * Math.PI), sin = Math.sin(left * Math.PI), shiftdown = 70, camdistance = 230;
 		var camera = [
 			1, 0, 0, 0,
 			0, 1, 0, 0,
 			0, 0, 1, 0
 		];
+
+		camdistance += Math.cos(2 * Math.PI * cycle) * 140;
 
 		var model = [
 			cos, sin, 0, 0,
@@ -104,7 +107,7 @@
 		var lights = [
 			//[0, -1, 0,  .1, .3, .1], // beneath
 			[0, 1, 0, .15, .15, .4], // above
-			//[1, 0, 0, 1, 1, 1], // left
+			[1, 0, 0, 0.2, 0.2, 0.8], // left
 			//[-1, 0, 0, 1, 1, 1], // right
 
 			[0, 0, 1, .2, .2, .2], // front
@@ -117,10 +120,10 @@
 		scene.eachVoxel(drawCell);
 
 		//model[11] += 40;
-		//model[3] -= 60;		
+		//model[3] -= 60;
 		//scene.eachVoxel(drawCell);
 
-
+		cycle += .00013 * (timestamp - oldTimestamp); while (cycle > 1.0) cycle -= 1.0;
 		 left += .0001 * (timestamp - oldTimestamp) * direction;
 		//left += .01 * direction;
 		console.log(timestamp - oldTimestamp);
@@ -135,15 +138,22 @@
 				dr = voxel[6], dg = voxel[7], db = voxel[8]; // diffuse
 
 			var
-				wx = model[0] * mx + model[1] * my + model[2] * mz + model[3],
-				wy = model[4] * mx + model[5] * my + model[6] * mz + model[7],
-				wz = model[8] * mx + model[9] * my + model[10] * mz + model[11];
-
-
-			var
 				nx = model[0] * mnx + model[1] * mny + model[2] * mnz,
 				ny = model[4] * mnx + model[5] * mny + model[6] * mnz,
 				nz = model[8] * mnx + model[9] * mny + model[10] * mnz;
+
+			// hmm ... not quite right ...
+			var
+				cameradot = -(nx * camera[2] + ny * camera[6] + nz * camera[10]);
+				//cameradot = -(nx * camera[8] + ny * camera[9] + nz * camera[10]);
+
+			//cameradot += 0; // fudge! to do this better we need an n-face system (ok, let's do that)
+			//if (cameradot < 0) return; // backface!
+
+			var
+				wx = model[0] * mx + model[1] * my + model[2] * mz + model[3],
+				wy = model[4] * mx + model[5] * my + model[6] * mz + model[7],
+				wz = model[8] * mx + model[9] * my + model[10] * mz + model[11];
 
 			var
 				sx = camera[0] * wx + camera[1] * wy + camera[2] * wz,
@@ -156,12 +166,15 @@
 			for (i = 0; i < lights.length; i++) {
 				light = lights[i];
 				dot = -(light[0] * nx + light[1] * ny + light[2] * nz);
+				
 				if (dot > 0) {
 					r += dr * dot * light[3];
 					g += dg * dot * light[4];
 					b += db * dot * light[5];
 				}
 			}
+
+			// r *= cameradot; g *= cameradot; b *= cameradot;
 
 
 				r =  ~~(255 * r);
@@ -173,7 +186,7 @@
 
 // linear projection:
 			var w = 450 / sz;
-			var midx =200 + (w * sx), midy = 250 + (w * sy);
+			var midx = screenx + (w * sx), midy = screeny + (w * sy);
 			var boxSize = cellSize * w;
 
 			context.fillStyle = "rgb(" + r + "," + g + "," + b + ")";
